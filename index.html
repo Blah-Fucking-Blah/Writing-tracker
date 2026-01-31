@@ -1,42 +1,404 @@
-# ✦ The Writing Tracker
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dark Romance Writer Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&amp;family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&amp;display=swap" rel="stylesheet">
+  <style>
+    /* CSS Variables */
+    :root {
+      --bg-color: #0f0a1e;
+      --surface-color: #1e0a28;
+      --primary-color: #a855f7;
+      --text-color: #d4b5f7;
+      --sub-text-color: #b8a0d4;
+      --font-headers: 'Cinzel', serif;
+      --font-body: 'Cormorant Garamond', serif;
+    }
 
-> *"Bleed onto the page."*
+    body {
+      box-sizing: border-box;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--font-body);
+    }
 
-A minimalist word tracker and sprint timer designed for authors, and ADHD brains. 
+    .font-header { font-family: var(--font-headers); }
+    .font-body { font-family: var(--font-body); }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-color); }
+    ::-webkit-scrollbar-thumb { background: var(--surface-color); border-radius: 3px; }
 
-Designed to be hosted on GitHub Pages and embedded directly into **Notion**.
+    @keyframes heartbeat {
+      0% { transform: scale(1); }
+      5% { transform: scale(1.02); }
+      10% { transform: scale(1); }
+      15% { transform: scale(1.02); }
+      50% { transform: scale(1); }
+      100% { transform: scale(1); }
+    }
 
-## ⚡ Features
+    .progress-ring { transform: rotate(-90deg); transition: stroke-dashoffset 0.5s ease; }
+    
+    .gothic-border {
+      border: 1px solid color-mix(in srgb, var(--primary-color), transparent 70%);
+      box-shadow: 0 0 20px color-mix(in srgb, var(--primary-color), transparent 85%);
+      background: var(--surface-color);
+    }
+    
+    .tab-active { border-bottom: 2px solid var(--primary-color); color: var(--primary-color); }
+    .tab-inactive { border-bottom: 2px solid transparent; color: var(--sub-text-color); opacity: 0.7; }
+    .tab-inactive:hover { opacity: 1; }
 
-* **The Daily goal:** A visual progress ring that fills as you meet your daily word count goals.
-* **The Sprint mod:** A dedicated timer for writing sprints. 
-    * *Visual Panic:* The timer includes a "heartbeat" animation that intensifies as you enter the final minute of a sprint.
-* **Streak Tracking:** keep the chain alive. Logic is adjusted for late-night writers (so 2 AM sessions don't break your streak).
-* **Privacy First:** Zero data leaves your device. All stats are saved to your browser's Local Storage.
-* **Atmospheric UI:** Deep violets, gothic fonts (`Cinzel`), and subtle glow effects.
+    input[type="number"] {
+      background: color-mix(in srgb, var(--bg-color), black 20%);
+      border: 1px solid color-mix(in srgb, var(--primary-color), transparent 70%);
+      color: var(--text-color);
+    }
+    input[type="number"]:focus { outline: none; border-color: var(--primary-color); }
 
-## 💻 How to Use
+    .btn-primary { background: var(--primary-color); color: var(--bg-color); font-family: var(--font-headers); font-weight: 600; transition: all 0.2s; }
+    .btn-primary:hover { filter: brightness(1.2); }
+    
+    .btn-secondary { background: transparent; border: 1px solid var(--primary-color); color: var(--primary-color); font-family: var(--font-headers); }
+    .btn-secondary:hover { background: color-mix(in srgb, var(--primary-color), transparent 90%); }
 
-### Option 1: The Notion Embed (Recommended)
-1.  Ensure this repository has **GitHub Pages** activated (Settings > Pages > Branch: Main).
-2.  Copy your generated URL (e.g., `https://yourusername.github.io/writing-tracker/`).
-3.  Open **Notion**.
-4.  Type `/embed` and paste the URL.
-5.  Resize the widget to fit your dashboard.
+    .timer-running { animation: heartbeat 2s infinite; color: var(--primary-color); }
+    .timer-panic { animation: heartbeat 0.5s infinite; color: #ef4444; } 
+  </style>
+ </head>
+ <body class="h-screen flex flex-col overflow-hidden">
+  
+  <div class="flex justify-center gap-8 pt-6 pb-2 border-b" style="border-color: color-mix(in srgb, var(--primary-color), transparent 80%);">
+    <button id="tab-tracker" class="tab-active pb-2 px-4 font-header tracking-widest text-sm uppercase transition-all">Daily Ritual</button>
+    <button id="tab-sprints" class="tab-inactive pb-2 px-4 font-header tracking-widest text-sm uppercase transition-all">Sprint Chamber</button>
+  </div>
 
-### Option 2: Desktop App
-1.  Download the `index.html` file.
-2.  Double-click to open it in your browser.
-3.  Pin the tab or bookmark it for daily access.
+  <div id="app" class="flex-1 w-full overflow-auto relative">
+    
+   <div id="view-tracker" class="p-6 flex flex-col min-h-full max-w-lg mx-auto w-full">
+    <div class="text-center mb-6">
+     <h1 class="font-header text-3xl mb-1 tracking-wider" style="text-shadow: 0 0 10px color-mix(in srgb, var(--primary-color), transparent 50%);">Writing Tracker</h1>
+     <p class="text-sm italic font-body" style="color: var(--sub-text-color);">Bleed onto the page.</p>
+    </div>
+    
+    <div class="flex justify-center mb-6">
+     <div class="relative">
+      <svg class="w-44 h-44" viewbox="0 0 180 180">
+       <circle cx="90" cy="90" r="80" fill="none" stroke="var(--sub-text-color)" stroke-width="8" stroke-opacity="0.2" /> 
+       <circle id="progress-circle" class="progress-ring" cx="90" cy="90" r="80" fill="none" stroke="var(--primary-color)" stroke-width="8" stroke-linecap="round" stroke-dasharray="502.65" stroke-dashoffset="502.65" />
+      </svg>
+      <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <span id="today-words" class="font-header text-4xl">0</span> 
+        <span class="text-xs uppercase tracking-wider font-body" style="color: var(--sub-text-color);">words today</span>
+      </div>
+     </div>
+    </div>
+    
+    <div class="text-center mb-6">
+     <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full gothic-border">
+       <span class="text-sm font-body" style="color: var(--sub-text-color);">Target:</span> 
+       <span id="goal-display" class="font-semibold font-header" style="color: var(--text-color);">500 words</span>
+     </div>
+    </div>
+    
+    <div class="rounded-2xl p-5 mb-6 gothic-border">
+     <div class="flex flex-col gap-4">
+      <div>
+        <label class="block text-xs uppercase tracking-widest mb-2 font-header" style="color: var(--sub-text-color);">Manual Entry</label>
+       <div class="flex gap-2">
+         <input type="number" id="word-input" placeholder="0" min="0" class="flex-1 px-4 py-3 rounded-xl text-lg font-medium transition-all"> 
+         <button id="add-btn" class="px-5 py-3 rounded-xl btn-primary"> + </button>
+       </div>
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-widest mb-2 font-header" style="color: var(--sub-text-color);">Set Daily Goal</label>
+       <div class="flex gap-2">
+         <input type="number" id="goal-input" placeholder="500" min="1" class="flex-1 px-4 py-3 rounded-xl transition-all"> 
+         <button id="goal-btn" class="px-5 py-3 rounded-xl btn-secondary"> Set </button>
+       </div>
+      </div>
+     </div>
+    </div>
+    
+    <div class="grid grid-cols-3 gap-3 mb-6">
+     <div class="text-center p-3 rounded-xl gothic-border">
+      <div id="streak-count" class="font-header text-xl" style="color: var(--primary-color);">0</div>
+      <div class="text-[10px] uppercase tracking-widest font-header opacity-70">Streak</div>
+     </div>
+     <div class="text-center p-3 rounded-xl gothic-border">
+      <div id="total-words" class="font-header text-xl" style="color: var(--primary-color);">0</div>
+      <div class="text-[10px] uppercase tracking-widest font-header opacity-70">Total</div>
+     </div>
+     <div class="text-center p-3 rounded-xl gothic-border">
+      <div id="avg-words" class="font-header text-xl" style="color: var(--primary-color);">0</div>
+      <div class="text-[10px] uppercase tracking-widest font-header opacity-70">Avg</div>
+     </div>
+    </div>
+    
+    <div class="rounded-2xl p-5 gothic-border">
+     <div class="flex justify-between items-center mb-4">
+       <button id="prev-month" class="p-2 hover:opacity-70 text-xl font-header"> ‹ </button>
+      <h3 id="calendar-title" class="text-sm uppercase tracking-widest font-header">December 2024</h3>
+      <button id="next-month" class="p-2 hover:opacity-70 text-xl font-header"> › </button>
+     </div>
+     <div id="calendar-grid" class="grid grid-cols-7 gap-1 mb-2"></div>
+     <div class="mt-4 pt-4 border-t flex justify-between items-center" style="border-color: color-mix(in srgb, var(--primary-color), transparent 80%);">
+       <span class="text-xs font-body opacity-70">Monthly Total:</span> <span id="monthly-total" class="text-lg font-header">0 words</span>
+     </div>
+    </div>
+   </div>
 
-## ⚙️ Customization
+   <div id="view-sprints" class="hidden p-6 flex flex-col min-h-full max-w-lg mx-auto w-full">
+     <div class="gothic-border rounded-2xl p-8 mb-6 text-center relative overflow-hidden">
+       <div class="relative z-10">
+         <div id="timer-display" class="text-7xl font-header mb-4 tabular-nums tracking-widest">25:00</div>
+         <div class="flex justify-center gap-3 mb-6">
+           <button onclick="window.setTimer(15)" class="text-xs border px-3 py-1 rounded opacity-60 hover:opacity-100 transition-opacity" style="border-color: var(--sub-text-color)">15m</button>
+           <button onclick="window.setTimer(25)" class="text-xs border px-3 py-1 rounded opacity-60 hover:opacity-100 transition-opacity" style="border-color: var(--sub-text-color)">25m</button>
+           <button onclick="window.setTimer(45)" class="text-xs border px-3 py-1 rounded opacity-60 hover:opacity-100 transition-opacity" style="border-color: var(--sub-text-color)">45m</button>
+         </div>
+         <div class="flex justify-center gap-4">
+           <button id="start-timer-btn" class="btn-primary px-8 py-3 rounded-xl text-lg shadow-lg">Ignite</button>
+           <button id="stop-timer-btn" class="btn-secondary px-6 py-3 rounded-xl hidden">Sever</button>
+         </div>
+       </div>
+       <div id="timer-bg-pulse" class="absolute inset-0 opacity-0 transition-opacity duration-1000 pointer-events-none" 
+            style="background: radial-gradient(circle, color-mix(in srgb, var(--primary-color), transparent 80%) 0%, transparent 70%);"></div>
+     </div>
 
-If you want to change the colors, edit `index.html` and look for the `:root` section at the top of the CSS:
+     <div class="grid grid-cols-2 gap-4 mb-6">
+       <div class="gothic-border p-4 rounded-xl text-center">
+         <div id="month-sprint-count" class="text-2xl font-header" style="color: var(--primary-color)">0</div>
+         <div class="text-xs uppercase tracking-widest opacity-60">Sessions (Mo)</div>
+       </div>
+       <div class="gothic-border p-4 rounded-xl text-center">
+         <div id="month-sprint-avg" class="text-2xl font-header" style="color: var(--primary-color)">0</div>
+         <div class="text-xs uppercase tracking-widest opacity-60">Avg Words</div>
+       </div>
+     </div>
 
-```css
-:root {
-  --bg-color: #0f0a1e;       /* Background */
-  --primary-color: #a855f7;  /* The main glow/accent */
-  --text-color: #d4b5f7;     /* Main text */
-}
+     <div class="gothic-border rounded-2xl p-4 flex-1">
+       <h3 class="font-header text-sm uppercase tracking-widest mb-4 opacity-80 border-b pb-2" style="border-color: color-mix(in srgb, var(--sub-text-color), transparent 80%)">Sprint Log</h3>
+       <div class="overflow-y-auto max-h-64 pr-2">
+         <table class="w-full text-sm">
+           <tbody id="sprint-log-body" class="font-body"></tbody>
+         </table>
+         <div id="empty-sprint-msg" class="text-center py-8 opacity-50 italic text-sm">No sprints recorded this month.</div>
+       </div>
+     </div>
+   </div>
 
+    <div id="sprint-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);">
+      <div class="gothic-border p-8 rounded-2xl w-full max-w-sm relative bg-[var(--surface-color)]">
+        <h3 class="font-header text-2xl text-center mb-2">Chaos Captured</h3>
+        <p class="text-center text-sm mb-6 opacity-70 italic">The timer has stopped. How many words?</p>
+        <input type="number" id="sprint-word-input" class="w-full p-4 rounded-xl text-2xl text-center mb-4" placeholder="0">
+        <div class="flex gap-3">
+          <button id="discard-sprint-btn" class="flex-1 py-3 rounded-xl btn-secondary text-sm">Discard</button>
+          <button id="save-sprint-btn" class="flex-1 py-3 rounded-xl btn-primary">Log It</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- LOCAL STORAGE MANAGER ---
+    const STORAGE_KEY = 'dark_romance_tracker_data';
+    
+    const DataManager = {
+      get: () => {
+        const data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) : [];
+      },
+      save: (data) => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      },
+      upsert: (record) => {
+        const data = DataManager.get();
+        const index = data.findIndex(r => r.date === record.date);
+        if (index >= 0) {
+          data[index] = record;
+        } else {
+          data.push(record);
+        }
+        DataManager.save(data);
+        return data;
+      }
+    };
+
+    // --- APP LOGIC ---
+    let writingData = DataManager.get();
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+    let currentGoal = 500;
+    
+    let timerInterval;
+    let timerTime = 25 * 60;
+    let initialTime = 25 * 60;
+    let isRunning = false;
+
+    function getDateKey(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function getTodayKey() { return getDateKey(new Date()); }
+    function getTodayRecord() { return writingData.find(r => r.date === getTodayKey()); }
+
+    function updateProgressCircle(words, goal) {
+      const circle = document.getElementById('progress-circle');
+      const circumference = 2 * Math.PI * 80;
+      const safeGoal = goal <= 0 ? 1 : goal;
+      const progress = Math.min(words / safeGoal, 1);
+      circle.style.strokeDashoffset = circumference - (progress * circumference);
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      document.getElementById('calendar-title').textContent = new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+      
+      const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      
+      let html = '';
+      for (let i = 0; i < 7; i++) html += `<div class="text-center text-xs opacity-50 font-header p-1">${['S','M','T','W','T','F','S'][i]}</div>`;
+      for (let i = 0; i < firstDay; i++) html += '<div></div>';
+      
+      let monthlyTotal = 0;
+      const todayKey = getTodayKey();
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateKey = getDateKey(new Date(currentYear, currentMonth, day));
+        const record = writingData.find(r => r.date === dateKey);
+        const words = record ? record.words : 0;
+        const goal = record ? record.goal : currentGoal;
+        if (words > 0) monthlyTotal += words;
+
+        let bg = 'color-mix(in srgb, var(--surface-color), transparent 50%)';
+        let border = 'color-mix(in srgb, var(--primary-color), transparent 20%)';
+        let text = 'var(--sub-text-color)';
+        
+        if (words >= goal && words > 0) {
+          bg = 'color-mix(in srgb, var(--primary-color), transparent 70%)';
+          border = 'var(--primary-color)';
+          text = 'var(--bg-color)';
+        } else if (words > 0) {
+          bg = 'color-mix(in srgb, var(--primary-color), transparent 90%)';
+        }
+        if (dateKey === todayKey) border = 'var(--text-color)';
+
+        html += `
+          <div class="rounded-lg p-1 text-center border transition-transform hover:scale-105" 
+               style="background: ${bg}; border-color: ${border}; aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center;">
+            <div class="text-[10px] font-header" style="color: ${text}">${day}</div>
+            ${words > 0 ? `<div class="text-[9px] leading-tight mt-0.5" style="color: ${words >= goal ? 'var(--bg-color)' : 'var(--primary-color)'}">${words > 999 ? (words/1000).toFixed(1) + 'k' : words}</div>` : ''}
+          </div>`;
+      }
+      grid.innerHTML = html;
+      document.getElementById('monthly-total').textContent = `${monthlyTotal.toLocaleString()} words`;
+    }
+
+    function updateStats() {
+      const todayRecord = getTodayRecord();
+      const todayWords = todayRecord ? todayRecord.words : 0;
+      const displayGoal = todayRecord ? todayRecord.goal : currentGoal;
+      
+      document.getElementById('today-words').textContent = todayWords.toLocaleString();
+      document.getElementById('goal-display').textContent = `${displayGoal.toLocaleString()} words`;
+      updateProgressCircle(todayWords, displayGoal);
+      
+      // Calculate Streak
+      let streak = 0;
+      const sorted = [...writingData].sort((a,b) => new Date(b.date) - new Date(a.date));
+      let check = new Date(); check.setHours(0,0,0,0);
+      const hasToday = sorted.find(r => r.date === getDateKey(check) && r.words > 0);
+      if (!hasToday) check.setDate(check.getDate() - 1);
+      
+      while (true) {
+        const r = sorted.find(x => x.date === getDateKey(check));
+        if (r && r.words > 0) { streak++; check.setDate(check.getDate() - 1); }
+        else break;
+      }
+      document.getElementById('streak-count').textContent = streak;
+
+      const total = writingData.reduce((a,b) => a + b.words, 0);
+      document.getElementById('total-words').textContent = total.toLocaleString();
+      document.getElementById('avg-words').textContent = writingData.length ? Math.round(total / writingData.length).toLocaleString() : 0;
+      
+      renderCalendar();
+      updateSprintStats();
+    }
+
+    // --- SPRINT LOGIC ---
+    function updateTimerDisplay() {
+      const m = Math.floor(timerTime / 60).toString().padStart(2, '0');
+      const s = (timerTime % 60).toString().padStart(2, '0');
+      const el = document.getElementById('timer-display');
+      el.textContent = `${m}:${s}`;
+      el.className = `text-7xl font-header mb-4 tabular-nums tracking-widest ${isRunning ? (timerTime<=60 ? 'timer-panic' : 'timer-running') : ''}`;
+    }
+
+    window.setTimer = (min) => { if(!isRunning) { initialTime = min * 60; timerTime = initialTime; updateTimerDisplay(); }};
+
+    document.getElementById('start-timer-btn').onclick = () => {
+      if (isRunning) return;
+      isRunning = true;
+      document.getElementById('start-timer-btn').classList.add('hidden');
+      document.getElementById('stop-timer-btn').classList.remove('hidden');
+      document.getElementById('timer-bg-pulse').style.opacity = '1';
+      timerInterval = setInterval(() => {
+        timerTime--; updateTimerDisplay();
+        if (timerTime <= 0) stopTimer(true);
+      }, 1000);
+    };
+
+    function stopTimer(finished) {
+      clearInterval(timerInterval);
+      isRunning = false;
+      document.getElementById('start-timer-btn').classList.remove('hidden');
+      document.getElementById('stop-timer-btn').classList.add('hidden');
+      document.getElementById('timer-bg-pulse').style.opacity = '0';
+      updateTimerDisplay();
+      document.getElementById('sprint-modal').classList.remove('hidden');
+      document.getElementById('sprint-word-input').focus();
+    }
+    document.getElementById('stop-timer-btn').onclick = () => stopTimer(false);
+
+    document.getElementById('discard-sprint-btn').onclick = () => {
+      document.getElementById('sprint-modal').classList.add('hidden');
+      timerTime = initialTime; updateTimerDisplay();
+    };
+
+    document.getElementById('save-sprint-btn').onclick = () => {
+      const words = parseInt(document.getElementById('sprint-word-input').value) || 0;
+      document.getElementById('sprint-modal').classList.add('hidden');
+      if (words > 0) {
+        const todayKey = getTodayKey();
+        const rec = getTodayRecord() || { date: todayKey, words: 0, goal: currentGoal, sprints: [] };
+        
+        const sprint = { duration: Math.max(1, Math.round((initialTime - timerTime)/60)), words, timestamp: Date.now() };
+        rec.words += words;
+        rec.sprints = rec.sprints ? [...rec.sprints, sprint] : [sprint];
+        
+        writingData = DataManager.upsert(rec);
+        updateStats();
+      }
+      timerTime = initialTime; updateTimerDisplay();
+      document.getElementById('sprint-word-input').value = '';
+    };
+
+    function updateSprintStats() {
+      const tbody = document.getElementById('sprint-log-body');
+      tbody.innerHTML = '';
+      const monthData = writingData.filter(r => new Date(r.date).getMonth() === currentMonth);
+      let sprints = [];
+      monthData.forEach(r => (r.sprints || []).forEach(s => sprints.push({...s, date: r.
